@@ -1,0 +1,14 @@
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace BookReviewHub.Dtos
+{
+    public class ReviewCreateDto
+    {
+        [Required]
+        public string Content { get; set; }
+        [Range(1, 5)]
+        public int Rating { get; set; }
+        [Required]
+        public int BookId { get; set; }
+    }
+}
