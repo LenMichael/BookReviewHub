@@ -1,6 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -45,28 +45,23 @@ namespace BookReviewHub
             return View(review);
         }
 
-        // GET: Reviews/Create
+        // GET: Reviews/Create (disabled)
+        [HttpGet]
         public IActionResult Create()
         {
-            ViewData["BookId"] = new SelectList(_context.Books, "Id", "Author");
-            return View();
+            return NotFound();
         }
 
         // POST: Reviews/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Content,Rating,DateCreated,BookId,UserId")] Review review)
+        public async Task<IActionResult> Create([Bind("Content,Rating,BookId")] Review review)
         {
-            if (ModelState.IsValid)
-            {
-                _context.Add(review);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
-            }
-            ViewData["BookId"] = new SelectList(_context.Books, "Id", "Author", review.BookId);
-            return View(review);
+            review.UserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            review.DateCreated = DateTime.Now;
+            _context.Add(review);
+            await _context.SaveChangesAsync();
+            return RedirectToAction("Details", "Books", new { id = review.BookId });
         }
 
         // GET: Reviews/Edit/5
@@ -87,39 +82,38 @@ namespace BookReviewHub
         }
 
         // POST: Reviews/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, [Bind("Id,Content,Rating,DateCreated,BookId,UserId")] Review review)
         {
             if (id != review.Id)
+                return NotFound();
+
+            var existingReview = await _context.Reviews.AsNoTracking().FirstOrDefaultAsync(r => r.Id == id);
+            if (existingReview == null)
             {
                 return NotFound();
             }
 
-            if (ModelState.IsValid)
+            review.UserId = existingReview.UserId;
+
+            try
             {
-                try
-                {
-                    _context.Update(review);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!ReviewExists(review.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-                return RedirectToAction(nameof(Index));
+                _context.Update(review);
+                await _context.SaveChangesAsync();
             }
-            ViewData["BookId"] = new SelectList(_context.Books, "Id", "Author", review.BookId);
-            return View(review);
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!ReviewExists(review.Id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+            return RedirectToAction(nameof(Index));
         }
 
         // GET: Reviews/Delete/5

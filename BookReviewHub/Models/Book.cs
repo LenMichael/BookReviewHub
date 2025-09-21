@@ -15,5 +15,7 @@ namespace BookReviewHub.Models
         [Required]
         public string Genre { get; set; }
         public ICollection<Review> Reviews { get; set; }
+        [Required]
+        public string UserId { get; set; }
     }
 }

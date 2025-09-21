@@ -1,14 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using BookReviewHub.Data;
 using BookReviewHub.Models;
 
-namespace BookReviewHub.Views
+namespace BookReviewHub.Controllers
 {
     public class BooksController : Controller
     {
@@ -29,16 +26,14 @@ namespace BookReviewHub.Views
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null)
-            {
                 return NotFound();
-            }
 
             var book = await _context.Books
+                .Include(b => b.Reviews)
+                //.ThenInclude(r => r.Book)
                 .FirstOrDefaultAsync(m => m.Id == id);
             if (book == null)
-            {
                 return NotFound();
-            }
 
             return View(book);
         }
@@ -54,28 +49,26 @@ namespace BookReviewHub.Views
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Id,Title,Author,PublishedYear,Genre")] Book book)
         {
-            if (ModelState.IsValid)
-            {
-                _context.Add(book);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
-            }
-            return View(book);
+            book.UserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            _context.Add(book);
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
         }
 
         // GET: Books/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
-            {
                 return NotFound();
-            }
 
             var book = await _context.Books.FindAsync(id);
             if (book == null)
-            {
                 return NotFound();
-            }
+
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (book.UserId != userId)
+                return Unauthorized();
+
             return View(book);
         }
 
@@ -85,47 +78,43 @@ namespace BookReviewHub.Views
         public async Task<IActionResult> Edit(int id, [Bind("Id,Title,Author,PublishedYear,Genre")] Book book)
         {
             if (id != book.Id)
-            {
                 return NotFound();
-            }
 
-            if (ModelState.IsValid)
+            var dbBook = await _context.Books.AsNoTracking().FirstOrDefaultAsync(b => b.Id == id);
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (dbBook == null || dbBook.UserId != userId)
+                return Unauthorized();
+
+            book.UserId = userId;
+
+            try
             {
-                try
-                {
-                    _context.Update(book);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!BookExists(book.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-                return RedirectToAction(nameof(Index));
+                _context.Update(book);
+                await _context.SaveChangesAsync();
             }
-            return View(book);
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!BookExists(book.Id))
+                    return NotFound();
+                else
+                    throw;
+            }
+            return RedirectToAction(nameof(Index));
         }
 
         // GET: Books/Delete/5
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
-            {
                 return NotFound();
-            }
 
-            var book = await _context.Books
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var book = await _context.Books.FirstOrDefaultAsync(m => m.Id == id);
             if (book == null)
-            {
                 return NotFound();
-            }
+
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (book.UserId != userId)
+                return Unauthorized();
 
             return View(book);
         }
@@ -136,12 +125,12 @@ namespace BookReviewHub.Views
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var book = await _context.Books.FindAsync(id);
-            if (book != null)
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (book != null && book.UserId == userId)
             {
                 _context.Books.Remove(book);
+                await _context.SaveChangesAsync();
             }
-
-            await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 

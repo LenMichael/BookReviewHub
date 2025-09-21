@@ -1,7 +1,14 @@
-﻿@model BookReviewHub.Models.Book
+﻿@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Authorization
+
+@model BookReviewHub.Models.Book
 
 @{
     ViewData["Title"] = "Details";
+}
+
+@{
+    var isAuthenticated = User.Identity.IsAuthenticated;
 }
 
 <h1>Details</h1>
@@ -37,6 +44,50 @@
     </dl>
 </div>
 <div>
-    <a asp-action="Edit" asp-route-id="@Model?.Id">Edit</a> |
+    @* @if (User.Identity.IsAuthenticated)
+    { *@
+    @if (User.Identity.IsAuthenticated && Model.UserId == User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value)
+    {
+        <a asp-action="Edit" asp-route-id="@Model?.Id">Edit</a> @: |
+    }
     <a asp-action="Index">Back to List</a>
 </div>
+
+<h3>Reviews</h3>
+@if (Model.Reviews != null && Model.Reviews.Any())
+{
+    foreach (var review in Model.Reviews)
+    {
+        <div class="border rounded p-2 mb-2">
+            <span>Rating - @review.Rating/5</span>
+            <p>Comment - @review.Content</p>
+            <small>@review.DateCreated.ToShortDateString()</small>
+        </div>
+    }
+}
+else
+{
+    <p>No reviews yet.</p>
+}
+
+@if (User.Identity.IsAuthenticated)
+{
+    <h4>Leave a Review</h4>
+    <form asp-action="Create" asp-controller="Reviews" method="post">
+        <input type="hidden" name="BookId" value="@Model.Id" />
+        <div class="mb-2">
+            <label for="Rating">Rating</label>
+            <input type="number" name="Rating" min="1" max="5" required class="form-control" />
+        </div>
+        <div class="mb-2">
+            <label for="Content">Content</label>
+            <textarea name="Content" required class="form-control"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Submit Review</button>
+    </form>
+}
+else
+{
+    @* <p><a asp-area="" asp-controller="Account" asp-action="Login">Login</a> to leave a review.</p> *@
+    <p><a asp-area="Identity" asp-page="/Account/Login">Login</a> to leave a review.</p>
+}

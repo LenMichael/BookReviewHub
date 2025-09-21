@@ -1,14 +1,23 @@
-﻿@model IEnumerable<BookReviewHub.Models.Review>
+﻿@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Authorization
+
+@model IEnumerable<BookReviewHub.Models.Review>
 
 @{
     ViewData["Title"] = "Index";
 }
 
-<h1>Index</h1>
+@{
+    var isAuthenticated = User.Identity.IsAuthenticated;
+}
 
-<p>
-    <a asp-action="Create">Create New</a>
-</p>
+<h1>Index</h1>
+@* @if (User.Identity.IsAuthenticated)
+{
+    <p>
+        <a asp-action="Create">Create New</a>
+    </p>
+} *@
 <table class="table">
     <thead>
         <tr>
@@ -45,13 +54,23 @@
             <td>
                 @Html.DisplayFor(modelItem => item.Book.Author)
             </td>
-            <td>
+            @* <td>
                 @Html.DisplayFor(modelItem => item.UserId)
-            </td>
+            </td> *@
             <td>
-                <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.Id">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
+                    @if (item.UserId == User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value)
+                    {
+                        <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> @: |
+                        <a asp-action="Delete" asp-route-id="@item.Id"> Delete </a> @: |
+                    }
+                    <a asp-action="Details" asp-route-id="@item.Id">Details</a>
+                    @* @if (User.Identity.IsAuthenticated)
+                    {
+                        <a asp-action="Edit" asp-route-id="@item.Id">Edit</a>
+                        @: |
+                    }
+                <a asp-action="Details" asp-route-id="@item.Id">Details</a> *@ @* | *@
+                @* <a asp-action="Delete" asp-route-id="@item.Id">Delete</a> *@
             </td>
         </tr>
 }
