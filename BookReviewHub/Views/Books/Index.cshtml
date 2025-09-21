@@ -59,18 +59,9 @@
                         <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> @: |
                         <a asp-action = "Delete" asp-route-id="@item.Id"> Delete </a> @: |
                     }
-                    <a asp-action="Details" asp-route-id="@item.Id">Details</a>
+                    <a asp-action="Details" asp-route-id="@item.Id">Details</a> |
+                    <a asp-action="Reviews" asp-route-id="@item.Id">Reviews</a>
                 </td>
-
-
-
-                    @* @if (User.Identity.IsAuthenticated)
-                    {
-                        <a asp-action="Edit" asp-route-id="@item.Id">Edit</a>
-                        @: |
-                    }
-                    <a asp-action="Details" asp-route-id="@item.Id">Details</a> *@ @* | *@
-                    @* <a asp-action="Delete" asp-route-id="@item.Id">Delete</a> *@
                 </td>
         </tr>
 }

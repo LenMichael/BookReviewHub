@@ -28,7 +28,7 @@ namespace BookReviewHub.Data
 
             modelBuilder.Entity<ReviewVote>()
                 .HasOne(n => n.Review)
-                .WithMany()
+                .WithMany(r => r.ReviewVotes)
                 .HasForeignKey(n => n.ReviewId);
         }
     }

@@ -4,6 +4,7 @@ using BookReviewHub.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace BookReviewHub.Controllers.Api
 {
@@ -24,6 +25,7 @@ namespace BookReviewHub.Controllers.Api
         {
             var book = await _context.Books
                 .Include(b => b.Reviews)
+                .ThenInclude(r => r.ReviewVotes)
                 .FirstOrDefaultAsync(b => b.Id == bookId);
 
             if (book == null)
@@ -35,12 +37,13 @@ namespace BookReviewHub.Controllers.Api
                 r.Content,
                 r.Rating,
                 r.DateCreated,
-                r.UserId
+                r.UserId,
+                Upvotes = r.ReviewVotes?.Count(v => v.IsUpvote) ?? 0,
+                Downvotes = r.ReviewVotes?.Count(v => !v.IsUpvote) ?? 0
             });
 
             return Ok(reviews);
         }
-
 
         // POST: api/reviews
         [HttpPost]
@@ -54,7 +57,7 @@ namespace BookReviewHub.Controllers.Api
             if (book == null)
                 return NotFound("Book not found.");
 
-            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (userId == null)
                 return Unauthorized();
 
@@ -84,18 +87,15 @@ namespace BookReviewHub.Controllers.Api
         // POST: api/reviews/{id}/vote
         [HttpPost("{id}/vote")]
         [Authorize]
-        public async Task<IActionResult> VoteReview(int id, [FromBody] ReviewVoteDto dto)
+        public async Task<IActionResult> Vote(int id, [FromBody] ReviewVoteDto dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null)
+                return Unauthorized();
 
             var review = await _context.Reviews.FindAsync(id);
             if (review == null)
-                return NotFound("Review not found.");
-
-            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            if (userId == null)
-                return Unauthorized();
+                return NotFound();
 
             var existingVote = await _context.ReviewVotes
                 .FirstOrDefaultAsync(v => v.ReviewId == id && v.UserId == userId);

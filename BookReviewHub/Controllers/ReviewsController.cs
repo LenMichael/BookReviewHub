@@ -154,5 +154,42 @@ namespace BookReviewHub
         {
             return _context.Reviews.Any(e => e.Id == id);
         }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Vote(int id, bool isUpvote)
+        {
+            var userId = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier);
+            if (userId == null)
+                return Unauthorized();
+
+            var review = await _context.Reviews.FindAsync(id);
+            if (review == null)
+                return NotFound();
+
+            var existingVote = await _context.ReviewVotes
+                .FirstOrDefaultAsync(v => v.ReviewId == id && v.UserId == userId);
+
+            if (existingVote != null)
+            {
+                existingVote.IsUpvote = isUpvote;
+            }
+            else
+            {
+                var vote = new ReviewVote
+                {
+                    ReviewId = id,
+                    UserId = userId,
+                    IsUpvote = isUpvote
+                };
+                _context.ReviewVotes.Add(vote);
+            }
+
+            await _context.SaveChangesAsync();
+
+            var reviewEntity = await _context.Reviews.FindAsync(id);
+            return RedirectToAction("Reviews", "Books", new { id = reviewEntity.BookId });
+        }
+
     }
 }

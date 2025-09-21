@@ -12,10 +12,10 @@ namespace BookReviewHub.Models
         [Range(1, 5)]
         public int Rating { get; set; }
         public DateTime DateCreated { get; set; } = DateTime.UtcNow;
-        [ForeignKey("Book")]
         public int BookId { get; set; }
         public Book Book { get; set; }
-        [ForeignKey("User")]
         public string UserId { get; set; }
+        public ICollection<ReviewVote> ReviewVotes { get; set; }
+
     }
 }

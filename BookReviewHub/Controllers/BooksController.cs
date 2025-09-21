@@ -138,5 +138,19 @@ namespace BookReviewHub.Controllers
         {
             return _context.Books.Any(e => e.Id == id);
         }
+
+        public async Task<IActionResult> Reviews(int id)
+        {
+            var book = await _context.Books
+                .Include(b => b.Reviews)
+                .ThenInclude(r => r.ReviewVotes)
+                .FirstOrDefaultAsync(b => b.Id == id);
+
+            if (book == null)
+                return NotFound();
+
+            return View(book);
+        }
+
     }
 }

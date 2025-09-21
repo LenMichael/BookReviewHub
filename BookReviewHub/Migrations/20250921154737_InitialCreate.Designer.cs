@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BookReviewHub.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250920160822_AddUserId")]
-    partial class AddUserId
+    [Migration("20250921154737_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -330,7 +330,7 @@ namespace BookReviewHub.Migrations
             modelBuilder.Entity("BookReviewHub.Models.ReviewVote", b =>
                 {
                     b.HasOne("BookReviewHub.Models.Review", "Review")
-                        .WithMany()
+                        .WithMany("ReviewVotes")
                         .HasForeignKey("ReviewId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -392,6 +392,11 @@ namespace BookReviewHub.Migrations
             modelBuilder.Entity("BookReviewHub.Models.Book", b =>
                 {
                     b.Navigation("Reviews");
+                });
+
+            modelBuilder.Entity("BookReviewHub.Models.Review", b =>
+                {
+                    b.Navigation("ReviewVotes");
                 });
 #pragma warning restore 612, 618
         }

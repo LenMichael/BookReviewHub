@@ -327,7 +327,7 @@ namespace BookReviewHub.Migrations
             modelBuilder.Entity("BookReviewHub.Models.ReviewVote", b =>
                 {
                     b.HasOne("BookReviewHub.Models.Review", "Review")
-                        .WithMany()
+                        .WithMany("ReviewVotes")
                         .HasForeignKey("ReviewId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -389,6 +389,11 @@ namespace BookReviewHub.Migrations
             modelBuilder.Entity("BookReviewHub.Models.Book", b =>
                 {
                     b.Navigation("Reviews");
+                });
+
+            modelBuilder.Entity("BookReviewHub.Models.Review", b =>
+                {
+                    b.Navigation("ReviewVotes");
                 });
 #pragma warning restore 612, 618
         }

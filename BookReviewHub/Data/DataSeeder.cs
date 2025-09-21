@@ -14,8 +14,8 @@ namespace BookReviewHub.Data
 
             var books = new List<Book>
             {
-                new Book { Title = "The Name of the Rose", Author = "Umberto Eco", PublishedYear = 1980, Genre = "Novel" },
-                new Book { Title = "The Little Prince", Author = "Antoine de Saint-Exupéry", PublishedYear = 1943, Genre = "Children" }
+                new Book { Title = "The Name of the Rose", Author = "Umberto Eco", PublishedYear = 1980, Genre = "Novel", UserId = "seed-user" },
+                new Book { Title = "The Little Prince", Author = "Antoine de Saint-Exupéry", PublishedYear = 1943, Genre = "Children" , UserId = "seed-user"}
             };
             context.Books.AddRange(books);
             context.SaveChanges();
