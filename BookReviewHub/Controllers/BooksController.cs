@@ -49,6 +49,8 @@ namespace BookReviewHub.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Id,Title,Author,PublishedYear,Genre")] Book book)
         {
+            if (!ModelState.IsValid)
+                return View(book);
             book.UserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             _context.Add(book);
             await _context.SaveChangesAsync();
@@ -84,6 +86,9 @@ namespace BookReviewHub.Controllers
             var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             if (dbBook == null || dbBook.UserId != userId)
                 return Unauthorized();
+
+            if (!ModelState.IsValid)
+                return View(book);
 
             book.UserId = userId;
 

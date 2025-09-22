@@ -7,9 +7,9 @@ namespace BookReviewHub.Models
     public class Review
     {
         public int Id { get; set; }
-        [Required]
+        [Required(ErrorMessage = "This field is required.")]
         public string Content { get; set; }
-        [Range(1, 5)]
+        [Range(1, 5, ErrorMessage = "Rating range 1-5.")]
         public int Rating { get; set; }
         public DateTime DateCreated { get; set; } = DateTime.UtcNow;
         public int BookId { get; set; }

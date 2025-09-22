@@ -57,6 +57,8 @@ namespace BookReviewHub
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Content,Rating,BookId")] Review review)
         {
+            if (!ModelState.IsValid)
+                return View(review);
             review.UserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             review.DateCreated = DateTime.Now;
             _context.Add(review);
@@ -93,6 +95,12 @@ namespace BookReviewHub
             if (existingReview == null)
             {
                 return NotFound();
+            }
+
+            if (!ModelState.IsValid)
+            {
+                ViewData["BookId"] = new SelectList(_context.Books, "Id", "Author", review.BookId);
+                return View(review);
             }
 
             review.UserId = existingReview.UserId;
