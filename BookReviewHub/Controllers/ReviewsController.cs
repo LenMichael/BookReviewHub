@@ -3,83 +3,82 @@ using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
-using BookReviewHub.Data;
 using BookReviewHub.Models;
+using BookReviewHub.Repositories.Interfaces;
+using BookReviewHub.Dtos;
 
-namespace BookReviewHub
+namespace BookReviewHub.Controllers
 {
     public class ReviewsController : Controller
     {
-        private readonly AppDbContext _context;
+        private readonly IReviewRepository _reviewRepository;
+        private readonly IBookRepository _bookRepository;
 
-        public ReviewsController(AppDbContext context)
+        public ReviewsController(IReviewRepository reviewRepository, IBookRepository bookRepository)
         {
-            _context = context;
+            _reviewRepository = reviewRepository;
+            _bookRepository = bookRepository;
         }
 
-        // GET: Reviews
+        // GET: Reviews/Index
         public async Task<IActionResult> Index()
         {
-            var appDbContext = _context.Reviews.Include(r => r.Book);
-            return View(await appDbContext.ToListAsync());
+            var reviews = await _reviewRepository.GetAllAsync();
+            return View(reviews);
         }
 
         // GET: Reviews/Details/5
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null)
-            {
                 return NotFound();
-            }
 
-            var review = await _context.Reviews
-                .Include(r => r.Book)
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var review = await _reviewRepository.GetByIdAsync(id.Value);
             if (review == null)
-            {
                 return NotFound();
-            }
 
             return View(review);
-        }
-
-        // GET: Reviews/Create (disabled)
-        [HttpGet]
-        public IActionResult Create()
-        {
-            return NotFound();
         }
 
         // POST: Reviews/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Content,Rating,BookId")] Review review)
+        public async Task<IActionResult> Create(ReviewCreateDto dto)
         {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null)
+                return Unauthorized();
+
             if (!ModelState.IsValid)
-                return View(review);
-            review.UserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            review.DateCreated = DateTime.Now;
-            _context.Add(review);
-            await _context.SaveChangesAsync();
-            return RedirectToAction("Details", "Books", new { id = review.BookId });
+            {
+                var book = await _bookRepository.GetByIdAsync(dto.BookId);
+                ViewBag.ValidationErrors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList();
+                return View("~/Views/Books/Reviews.cshtml", book);
+            }
+
+            var review = new Review
+            {
+                Content = dto.Content,
+                Rating = dto.Rating,
+                BookId = dto.BookId,
+                UserId = userId,
+                DateCreated = DateTime.Now
+            };
+
+            await _reviewRepository.AddAsync(review);
+            return RedirectToAction("Reviews", "Books", new { id = dto.BookId });
         }
 
         // GET: Reviews/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
-            {
                 return NotFound();
-            }
 
-            var review = await _context.Reviews.FindAsync(id);
+            var review = await _reviewRepository.GetByIdAsync(id.Value);
             if (review == null)
-            {
                 return NotFound();
-            }
-            ViewData["BookId"] = new SelectList(_context.Books, "Id", "Author", review.BookId);
+
             return View(review);
         }
 
@@ -91,36 +90,15 @@ namespace BookReviewHub
             if (id != review.Id)
                 return NotFound();
 
-            var existingReview = await _context.Reviews.AsNoTracking().FirstOrDefaultAsync(r => r.Id == id);
+            var existingReview = await _reviewRepository.GetByIdAsync(id);
             if (existingReview == null)
-            {
                 return NotFound();
-            }
 
             if (!ModelState.IsValid)
-            {
-                ViewData["BookId"] = new SelectList(_context.Books, "Id", "Author", review.BookId);
                 return View(review);
-            }
 
             review.UserId = existingReview.UserId;
-
-            try
-            {
-                _context.Update(review);
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!ReviewExists(review.Id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
+            await _reviewRepository.UpdateAsync(review);
             return RedirectToAction(nameof(Index));
         }
 
@@ -128,17 +106,11 @@ namespace BookReviewHub
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
-            {
                 return NotFound();
-            }
 
-            var review = await _context.Reviews
-                .Include(r => r.Book)
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var review = await _reviewRepository.GetByIdAsync(id.Value);
             if (review == null)
-            {
                 return NotFound();
-            }
 
             return View(review);
         }
@@ -148,56 +120,8 @@ namespace BookReviewHub
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var review = await _context.Reviews.FindAsync(id);
-            if (review != null)
-            {
-                _context.Reviews.Remove(review);
-            }
-
-            await _context.SaveChangesAsync();
+            await _reviewRepository.DeleteAsync(id);
             return RedirectToAction(nameof(Index));
         }
-
-        private bool ReviewExists(int id)
-        {
-            return _context.Reviews.Any(e => e.Id == id);
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Vote(int id, bool isUpvote)
-        {
-            var userId = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier);
-            if (userId == null)
-                return Unauthorized();
-
-            var review = await _context.Reviews.FindAsync(id);
-            if (review == null)
-                return NotFound();
-
-            var existingVote = await _context.ReviewVotes
-                .FirstOrDefaultAsync(v => v.ReviewId == id && v.UserId == userId);
-
-            if (existingVote != null)
-            {
-                existingVote.IsUpvote = isUpvote;
-            }
-            else
-            {
-                var vote = new ReviewVote
-                {
-                    ReviewId = id,
-                    UserId = userId,
-                    IsUpvote = isUpvote
-                };
-                _context.ReviewVotes.Add(vote);
-            }
-
-            await _context.SaveChangesAsync();
-
-            var reviewEntity = await _context.Reviews.FindAsync(id);
-            return RedirectToAction("Reviews", "Books", new { id = reviewEntity.BookId });
-        }
-
     }
 }

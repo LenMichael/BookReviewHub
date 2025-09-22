@@ -1,75 +1,66 @@
 ﻿@model BookReviewHub.Models.Book
 
 @{
-    bool isAuthenticated = User.Identity.IsAuthenticated;
-    string userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    ViewData["Title"] = $"Reviews for \"{Model.Title}\" by {Model.Author}";
 }
 
-<h2>Reviews for "@Model.Title" by @Model.Author</h2>
+<h2>@ViewData["Title"]</h2>
 <p>Published: @Model.PublishedYear | Genre: @Model.Genre</p>
 
-@if (Model.Reviews != null && Model.Reviews.Any())
-{
-    foreach (var review in Model.Reviews)
-    {
-        var upvotes = review.ReviewVotes?.Count(v => v.IsUpvote) ?? 0;
-        var downvotes = review.ReviewVotes?.Count(v => !v.IsUpvote) ?? 0;
-        var userVote = review.ReviewVotes?.FirstOrDefault(v => v.UserId == userId);
-
-        <div class="border rounded p-2 mb-2">
-            <span>Rating: @review.Rating/5</span>
-            <p>@review.Content</p>
-            <small>@review.DateCreated.ToShortDateString()</small>
-            <div class="d-flex align-items-center gap-2 mt-2">
-                <form asp-controller="Reviews" asp-action="Vote" asp-route-id="@review.Id" method="post" style="display:inline;">
-                    <input type="hidden" name="isUpvote" value="true" />
-                    <button type="submit"
-                            class="btn btn-sm @(userVote?.IsUpvote == true ? "btn-success" : "btn-outline-secondary")"
-                            title="Like"
-                    @(isAuthenticated ? "" : "disabled")
-                            onclick="return checkLogin('@isAuthenticated');">
-                        👍 @upvotes
-                    </button>
-                </form>
-                <form asp-controller="Reviews" asp-action="Vote" asp-route-id="@review.Id" method="post" style="display:inline;">
-                    <input type="hidden" name="isUpvote" value="false" />
-                    <button type="submit"
-                            class="btn btn-sm @(userVote?.IsUpvote == false ? "btn-danger" : "btn-outline-secondary")"
-                            title="Dislike"
-                    @(isAuthenticated ? "" : "disabled")
-                            onclick="return checkLogin('@isAuthenticated');">
-                        👎 @downvotes
-                    </button>
-                </form>
-            </div>
-        </div>
-    }
-}
-else
+@if (Model.Reviews == null || !Model.Reviews.Any())
 {
     <p>No reviews yet for this book.</p>
 }
-<a asp-action="Index">Back to List</a>
+else
+{
+    <ul>
+        @foreach (var review in Model.Reviews)
+        {
+            <li>
+                <strong>Rating:</strong> @review.Rating<br />
+                <strong>Content:</strong> @review.Content<br />
+                <small>@* By user: @review.UserId, *@ @review.DateCreated.ToShortDateString()</small>
+            </li>
+        }
+    </ul>
+}
 
-@if (isAuthenticated)
+@if (User.Identity.IsAuthenticated)
 {
     <h4>Leave a Review</h4>
     <form asp-action="Create" asp-controller="Reviews" method="post">
         <input type="hidden" name="BookId" value="@Model.Id" />
-        <div class="mb-2">
+        <div class="form-group">
             <label for="Rating">Rating</label>
-            <input type="number" name="Rating" min="1" max="5" required class="form-control" />
+            <input type="number" name="Rating" class="form-control" min="1" max="5" required />
         </div>
-        <div class="mb-2">
+        <div class="form-group">
             <label for="Content">Content</label>
-            <textarea name="Content" required class="form-control"></textarea>
+            <textarea name="Content" class="form-control" required></textarea>
         </div>
         <button type="submit" class="btn btn-primary">Submit Review</button>
     </form>
+    @if (ViewBag.ValidationErrors != null)
+    {
+        <ul class="text-danger">
+            @foreach (var err in (List<string>)ViewBag.ValidationErrors)
+            {
+                <li>@err</li>
+            }
+        </ul>
+    }
 }
 else
 {
-    <p><a asp-area="Identity" asp-page="/Account/Login">Login</a> to leave a review or vote.</p>
+    <p><a asp-area="" asp-controller="Account" asp-action="Login">Login</a> to leave a review.</p>
 }
 
+<div>
+    <a asp-action="Index">Back to List</a>
+</div>
 
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

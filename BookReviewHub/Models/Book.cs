@@ -14,8 +14,8 @@ namespace BookReviewHub.Models
         public int PublishedYear { get; set; }
         [Required]
         public string Genre { get; set; }
-        public ICollection<Review> Reviews { get; set; }
-        [Required]
+        public ICollection<Review> Reviews { get; set; } = new List<Review>();
+        //[Required]
         public string UserId { get; set; }
     }
 }

@@ -4,22 +4,23 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using BookReviewHub.Data;
 using BookReviewHub.Models;
+using BookReviewHub.Repositories.Interfaces;
 
 namespace BookReviewHub.Controllers
 {
     public class BooksController : Controller
     {
-        private readonly AppDbContext _context;
+        private readonly IBookRepository _bookRepository;
 
-        public BooksController(AppDbContext context)
+        public BooksController(IBookRepository bookRepository)
         {
-            _context = context;
+            _bookRepository = bookRepository;
         }
 
-        // GET: Books
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string genre, int? year, int? rating)
         {
-            return View(await _context.Books.ToListAsync());
+            var books = await _bookRepository.GetFilteredAsync(genre, year, rating);
+            return View(books);
         }
 
         // GET: Books/Details/5
@@ -28,10 +29,7 @@ namespace BookReviewHub.Controllers
             if (id == null)
                 return NotFound();
 
-            var book = await _context.Books
-                .Include(b => b.Reviews)
-                //.ThenInclude(r => r.Book)
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var book = await _bookRepository.GetByIdAsync(id.Value);
             if (book == null)
                 return NotFound();
 
@@ -47,13 +45,23 @@ namespace BookReviewHub.Controllers
         // POST: Books/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Title,Author,PublishedYear,Genre")] Book book)
+        public async Task<IActionResult> Create([Bind("Id,Title,Author,PublishedYear,Genre")] BookCreateDto bookDto)
         {
             if (!ModelState.IsValid)
-                return View(book);
-            book.UserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            _context.Add(book);
-            await _context.SaveChangesAsync();
+                return View(bookDto);
+
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            var book = new Book
+            {
+                Title = bookDto.Title,
+                Author = bookDto.Author,
+                PublishedYear = bookDto.PublishedYear,
+                Genre = bookDto.Genre,
+                UserId = userId
+            };
+
+            await _bookRepository.AddAsync(book);
             return RedirectToAction(nameof(Index));
         }
 
@@ -63,7 +71,7 @@ namespace BookReviewHub.Controllers
             if (id == null)
                 return NotFound();
 
-            var book = await _context.Books.FindAsync(id);
+            var book = await _bookRepository.GetByIdAsync(id.Value);
             if (book == null)
                 return NotFound();
 
@@ -82,7 +90,7 @@ namespace BookReviewHub.Controllers
             if (id != book.Id)
                 return NotFound();
 
-            var dbBook = await _context.Books.AsNoTracking().FirstOrDefaultAsync(b => b.Id == id);
+            var dbBook = await _bookRepository.GetByIdAsync(id);
             var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             if (dbBook == null || dbBook.UserId != userId)
                 return Unauthorized();
@@ -91,19 +99,7 @@ namespace BookReviewHub.Controllers
                 return View(book);
 
             book.UserId = userId;
-
-            try
-            {
-                _context.Update(book);
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!BookExists(book.Id))
-                    return NotFound();
-                else
-                    throw;
-            }
+            await _bookRepository.UpdateAsync(book);
             return RedirectToAction(nameof(Index));
         }
 
@@ -113,7 +109,7 @@ namespace BookReviewHub.Controllers
             if (id == null)
                 return NotFound();
 
-            var book = await _context.Books.FirstOrDefaultAsync(m => m.Id == id);
+            var book = await _bookRepository.GetByIdAsync(id.Value);
             if (book == null)
                 return NotFound();
 
@@ -129,27 +125,21 @@ namespace BookReviewHub.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var book = await _context.Books.FindAsync(id);
+            var book = await _bookRepository.GetByIdAsync(id);
             var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             if (book != null && book.UserId == userId)
-            {
-                _context.Books.Remove(book);
-                await _context.SaveChangesAsync();
-            }
+                _bookRepository.DeleteAsync(id);
             return RedirectToAction(nameof(Index));
         }
 
-        private bool BookExists(int id)
+        private async Task<bool> BookExists(int id)
         {
-            return _context.Books.Any(e => e.Id == id);
+            return await _bookRepository.ExistsAsync(id);
         }
 
         public async Task<IActionResult> Reviews(int id)
         {
-            var book = await _context.Books
-                .Include(b => b.Reviews)
-                .ThenInclude(r => r.ReviewVotes)
-                .FirstOrDefaultAsync(b => b.Id == id);
+            var book = await _bookRepository.GetByIdAsync(id);
 
             if (book == null)
                 return NotFound();

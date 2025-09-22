@@ -5,15 +5,32 @@
 
 @{
     ViewData["Title"] = "Index";
-}
-
-@{
     var isAuthenticated = User.Identity.IsAuthenticated;
+    var genre = Context.Request.Query["genre"].ToString();
+    var year = Context.Request.Query["year"].ToString();
+    var rating = Context.Request.Query["rating"].ToString();
 }
 
-<h1>Index</h1>
+<h1>Books</h1>
 
-@if (User.Identity.IsAuthenticated)
+<form method="get" asp-action="Index" class="mb-3">
+    <div class="row g-2">
+        <div class="col">
+            <input type="text" name="genre" value="@genre" class="form-control" placeholder="Genre" />
+        </div>
+        <div class="col">
+            <input type="number" name="year" value="@year" class="form-control" placeholder="Year" />
+        </div>
+        <div class="col">
+            <input type="number" name="rating" value="@rating" class="form-control" placeholder="Rating" min="1" max="5" />
+        </div>
+        <div class="col">
+            <button type="submit" class="btn btn-primary">Filter</button>
+        </div>
+    </div>
+</form>
+
+@if (isAuthenticated)
 {
     <p>
         <a asp-action="Create">Create New</a>
@@ -38,7 +55,8 @@
         </tr>
     </thead>
     <tbody>
-        @foreach (var item in Model) {
+        @foreach (var item in Model)
+        {
             <tr>
                 <td>
                     @Html.DisplayFor(modelItem => item.Title)
@@ -53,17 +71,15 @@
                     @Html.DisplayFor(modelItem => item.Genre)
                 </td>
                 <td>
-                <td>
                     @if (item.UserId == User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value)
                     {
                         <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> @: |
-                        <a asp-action = "Delete" asp-route-id="@item.Id"> Delete </a> @: |
+                        <a asp-action="Delete" asp-route-id="@item.Id">Delete</a> @: |
                     }
                     <a asp-action="Details" asp-route-id="@item.Id">Details</a> |
                     <a asp-action="Reviews" asp-route-id="@item.Id">Reviews</a>
                 </td>
-                </td>
-        </tr>
-}
+            </tr>
+        }
     </tbody>
 </table>
